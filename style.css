@@ -105,3 +105,54 @@ input:focus, select:focus, textarea:focus {
     background-color: #0f172a;
     border-color: #1e293b;
 }
+
+/* Icon Picker */
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+}
+
+.icon-item {
+    aspect-ratio: 1/1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8fafc;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.dark .icon-item {
+    background-color: #1e293b;
+}
+
+.icon-item:hover {
+    background-color: #f1f5f9;
+}
+
+.dark .icon-item:hover {
+    background-color: #334155;
+}
+
+.icon-item.selected {
+    border-color: #6366f1;
+    background-color: #eef2ff;
+    color: #4f46e5;
+}
+
+.dark .icon-item.selected {
+    background-color: #312e81;
+    border-color: #818cf8;
+}
+
+/* Bulk Delete View Customizations */
+.bulk-item-checkbox {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: #6366f1;
+    cursor: pointer;
+}
+

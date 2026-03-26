@@ -15,6 +15,12 @@ const DEFAULT_CATEGORIES = [
     { id: '9', name: 'Misc', icon: 'grid', color: '#94a3b8' }
 ];
 
+const AVAILABLE_ICONS = [
+    'utensils', 'car', 'home', 'zap', 'banknote', 'shopping-bag', 'play', 'heart', 'grid',
+    'coffee', 'gift', 'dog', 'clapperboard', 'dumbbell', 'book', 'briefcase', 'plane', 'bus', 'bikini'
+];
+
+
 // --- State Management ---
 let state = {
     transactions: JSON.parse(localStorage.getItem('transactions')) || [],
@@ -72,14 +78,14 @@ const getYearId = (dateStr) => {
 
 const generateFilterOptions = (type, currentValue) => {
     if (type === 'all') return '';
-    
+
     const values = new Set();
     state.transactions.forEach(t => {
         if (type === 'weekly') values.add(getWeekId(t.date));
         else if (type === 'monthly') values.add(getMonthId(t.date));
         else if (type === 'yearly') values.add(getYearId(t.date));
     });
-    
+
     // If no transactions, add current period as default
     if (values.size === 0) {
         const now = new Date().toISOString().split('T')[0];
@@ -87,9 +93,9 @@ const generateFilterOptions = (type, currentValue) => {
         else if (type === 'monthly') values.add(getMonthId(now));
         else if (type === 'yearly') values.add(getYearId(now));
     }
-    
+
     const sortedValues = Array.from(values).sort((a, b) => b.localeCompare(a));
-    
+
     return sortedValues.map(val => {
         let label = val;
         if (type === 'weekly') label = getWeekRange(val);
@@ -105,7 +111,7 @@ const generateFilterOptions = (type, currentValue) => {
 const views = {
     home: () => {
         let transactions = [...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
-        
+
         // Apply Filters
         if (state.filterType !== 'all') {
             if (state.filterType === 'weekly') {
@@ -183,8 +189,8 @@ const views = {
                             <p class="text-[10px] font-bold text-slate-400 uppercase mb-2 ml-1">${formatDate(date)}</p>
                             <div class="space-y-2">
                                 ${groups[date].map(t => {
-                                    const cat = state.categories.find(c => c.id === t.categoryId) || { icon: 'grid', color: '#94a3b8' };
-                                    return `
+            const cat = state.categories.find(c => c.id === t.categoryId) || { icon: 'grid', color: '#94a3b8' };
+            return `
                                         <div class="transaction-item flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 active:bg-slate-50 dark:active:bg-slate-800 transition-colors" onclick="editTransaction('${t.id}')">
                                             <div class="flex items-center flex-1">
                                                 <div class="w-10 h-10 rounded-lg flex items-center justify-center mr-3" style="background-color: ${cat.color}20; color: ${cat.color}">
@@ -200,7 +206,7 @@ const views = {
                                             </p>
                                         </div>
                                     `;
-                                }).join('')}
+        }).join('')}
                             </div>
                         </div>
                     `).join('')}
@@ -263,7 +269,7 @@ const views = {
                 </div>
 
                 <div class="card mb-6">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center">Expense Breakdown (${filterLabel[state.statsFilter||'all']})</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center">Expense Breakdown (${filterLabel[state.statsFilter || 'all']})</p>
                     <div class="relative h-64">
                         <canvas id="expenseChart"></canvas>
                     </div>
@@ -275,9 +281,9 @@ const views = {
                         ${sortedCategories.length === 0 ? `
                             <p class="text-slate-400 text-sm italic">No expense data to analyze yet.</p>
                         ` : sortedCategories.map(([name, amount]) => {
-                            const cat = state.categories.find(c => c.name === name) || { color: '#94a3b8' };
-                            const percent = ((amount / totalExpense) * 100).toFixed(1);
-                            return `
+            const cat = state.categories.find(c => c.name === name) || { color: '#94a3b8' };
+            const percent = ((amount / totalExpense) * 100).toFixed(1);
+            return `
                                 <div class="card !p-4 flex items-center justify-between">
                                     <div class="flex items-center flex-1">
                                         <div class="w-8 h-8 rounded-lg mr-3" style="background-color: ${cat.color}20; color: ${cat.color}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -296,7 +302,7 @@ const views = {
                                     <span class="font-bold text-sm text-red-500">${formatCurrency(amount)}</span>
                                 </div>
                             `;
-                        }).join('')}
+        }).join('')}
                     </div>
                 </div>
             </div>
@@ -354,16 +360,72 @@ const views = {
                         <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
                     </label>
                 </div>
+
+                <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-3 block">Data Management</h3>
+                    <button id="bulk-delete-btn" class="card w-full flex items-center justify-between mb-3">
+                        <div class="flex items-center">
+                            <i data-lucide="list-checks" class="mr-3 text-amber-500"></i>
+                            <span>Bulk Delete</span>
+                        </div>
+                        <i data-lucide="chevron-right" class="text-slate-300"></i>
+                    </button>
+                    <button id="delete-all-btn" class="card w-full flex items-center justify-between text-red-500">
+                        <div class="flex items-center">
+                            <i data-lucide="trash-2" class="mr-3"></i>
+                            <span>Delete All Transactions</span>
+                        </div>
+                    </button>
+                </div>
             </div>
         </div>
-    `
+    `,
+    bulkDelete: () => {
+        const transactions = [...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+        return `
+            <div class="animate-fade-in-up">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold">Bulk Delete</h1>
+                    <button id="bulk-back-btn" class="text-slate-500 font-bold text-sm">Cancel</button>
+                </div>
+
+                <div class="flex gap-2 mb-6">
+                    <button id="select-all-btn" class="btn-primary !py-2 !px-4 !text-xs !bg-slate-200 !text-slate-700 !shadow-none">Select All</button>
+                    <button id="delete-selected-btn" class="btn-primary !py-2 !px-4 !text-xs !bg-red-500 !text-white !shadow-none hidden">Delete Selected (<span id="selected-count">0</span>)</button>
+                </div>
+
+                <div class="space-y-2">
+                    ${transactions.length === 0 ? `
+                        <p class="text-center text-slate-400 py-12">No transactions to delete.</p>
+                    ` : transactions.map(t => `
+                        <label class="card !p-3 flex items-center gap-4 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800 transition-colors">
+                            <input type="checkbox" class="bulk-item-checkbox" data-id="${t.id}">
+                            <div class="flex-1">
+                                <div class="flex justify-between items-center">
+                                    <p class="font-semibold text-sm">${t.description}</p>
+                                    <p class="font-bold text-sm ${t.amount < 0 ? 'text-red-500' : 'text-green-500'}">
+                                        ${t.amount < 0 ? '-' : '+'}${formatCurrency(Math.abs(t.amount))}
+                                    </p>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <p class="text-slate-400 text-[10px]">${t.categoryName}</p>
+                                    <p class="text-slate-400 text-[10px]">${formatDate(t.date)}</p>
+                                </div>
+                            </div>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
 };
+
 
 const switchView = (viewName) => {
     state.currentView = viewName;
     const content = document.getElementById('app-content');
     content.innerHTML = views[viewName]();
-    
+
     // Update nav colors
     ['home', 'stats', 'categories', 'settings'].forEach(v => {
         const btn = document.getElementById(`nav-${v}`);
@@ -383,7 +445,7 @@ const switchView = (viewName) => {
         initChart(state.statsFilterType, state.statsFilterValue);
         const statsTypeSelect = document.getElementById('stats-filter-type');
         const statsValueSelect = document.getElementById('stats-filter-value');
-        
+
         if (statsTypeSelect) {
             statsTypeSelect.onchange = (e) => {
                 state.statsFilterType = e.target.value;
@@ -394,7 +456,7 @@ const switchView = (viewName) => {
                         else if (state.statsFilterType === 'monthly') options.add(getMonthId(t.date));
                         else if (state.statsFilterType === 'yearly') options.add(getYearId(t.date));
                     });
-                    const sorted = Array.from(options).sort((a,b) => b.localeCompare(a));
+                    const sorted = Array.from(options).sort((a, b) => b.localeCompare(a));
                     state.statsFilterValue = sorted[0] || new Date().toISOString().split('T')[0];
                 }
                 switchView('stats');
@@ -407,11 +469,11 @@ const switchView = (viewName) => {
             };
         }
     }
-    
+
     if (viewName === 'home') {
         const typeSelect = document.getElementById('filter-type-select');
         const valueSelect = document.getElementById('filter-value-select');
-        
+
         if (typeSelect) {
             typeSelect.onchange = (e) => {
                 state.filterType = e.target.value;
@@ -422,7 +484,7 @@ const switchView = (viewName) => {
                         else if (state.filterType === 'monthly') options.add(getMonthId(t.date));
                         else if (state.filterType === 'yearly') options.add(getYearId(t.date));
                     });
-                    const sorted = Array.from(options).sort((a,b) => b.localeCompare(a));
+                    const sorted = Array.from(options).sort((a, b) => b.localeCompare(a));
                     state.filterValue = sorted[0] || new Date().toISOString().split('T')[0];
                 }
                 switchView('home');
@@ -441,6 +503,39 @@ const switchView = (viewName) => {
         document.getElementById('import-file-input').onchange = importFromExcel;
         document.getElementById('dark-mode-toggle').onclick = toggleDarkMode;
         document.getElementById('dark-mode-toggle').checked = document.documentElement.classList.contains('dark');
+        document.getElementById('bulk-delete-btn').onclick = () => switchView('bulkDelete');
+        document.getElementById('delete-all-btn').onclick = deleteAllTransactions;
+    }
+    if (viewName === 'bulkDelete') {
+        document.getElementById('bulk-back-btn').onclick = () => switchView('settings');
+        
+        const checkboxes = document.querySelectorAll('.bulk-item-checkbox');
+        const countSpan = document.getElementById('selected-count');
+        const deleteBtn = document.getElementById('delete-selected-btn');
+        const selectAllBtn = document.getElementById('select-all-btn');
+
+        const updateUI = () => {
+            const selected = Array.from(checkboxes).filter(cb => cb.checked);
+            countSpan.innerText = selected.length;
+            if (selected.length > 0) {
+                deleteBtn.classList.remove('hidden');
+            } else {
+                deleteBtn.classList.add('hidden');
+            }
+        };
+
+        checkboxes.forEach(cb => cb.onchange = updateUI);
+
+        selectAllBtn.onclick = () => {
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            updateUI();
+        };
+
+        deleteBtn.onclick = () => {
+            const selectedIds = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.dataset.id);
+            deleteSelectedTransactions(selectedIds);
+        };
     }
     if (viewName === 'categories') {
         document.getElementById('add-category-btn').onclick = showAddCategoryModal;
@@ -452,7 +547,7 @@ const editTransaction = (id) => {
     if (!t) return;
 
     const categoriesOptions = state.categories.map(c => `<option value="${c.id}" ${c.id === t.categoryId ? 'selected' : ''}>${c.name}</option>`).join('');
-    
+
     showModal(`
         <div class="p-6">
             <div class="flex justify-between items-center mb-6">
@@ -508,7 +603,7 @@ const editTransaction = (id) => {
     };
 
     let type = t.amount < 0 ? 'expense' : 'income';
-    
+
     document.getElementById('type-expense').onclick = () => {
         type = 'expense';
         document.getElementById('type-expense').className = 'flex-1 py-3 rounded-xl border-2 border-red-500 bg-red-50 text-red-600 font-bold';
@@ -568,10 +663,29 @@ const showAddCategoryModal = () => {
                     <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Color</label>
                     <input type="color" id="cat-color" value="#6366f1" class="h-12 p-1">
                 </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Select Icon</label>
+                    <div class="icon-grid p-2 bg-slate-50 dark:bg-slate-900 rounded-xl max-h-40 overflow-y-auto no-scrollbar">
+                        ${AVAILABLE_ICONS.map(icon => `
+                            <div class="icon-item ${icon === 'tag' ? 'selected' : ''}" data-icon="${icon}">
+                                <i data-lucide="${icon}" class="w-5 h-5"></i>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
                 <button type="submit" class="btn-primary w-full mt-4">Add Category</button>
             </form>
         </div>
     `);
+
+    let selectedIcon = 'tag';
+    document.querySelectorAll('.icon-item').forEach(item => {
+        item.onclick = () => {
+            document.querySelectorAll('.icon-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+            selectedIcon = item.dataset.icon;
+        };
+    });
 
     document.getElementById('close-modal').onclick = hideModal;
     document.getElementById('category-form').onsubmit = (e) => {
@@ -582,7 +696,7 @@ const showAddCategoryModal = () => {
         state.categories.push({
             id: Date.now().toString(),
             name: name,
-            icon: 'tag',
+            icon: selectedIcon,
             color: color
         });
 
@@ -604,6 +718,24 @@ const toggleDarkMode = () => {
     document.documentElement.classList.toggle('dark');
     const isDark = document.documentElement.classList.contains('dark');
     localStorage.setItem('darkMode', isDark);
+};
+
+const deleteAllTransactions = () => {
+    if (confirm('Are you sure you want to delete ALL transactions? This action cannot be undone.')) {
+        state.transactions = [];
+        saveState();
+        switchView('settings');
+        alert('All transactions have been deleted.');
+    }
+};
+
+const deleteSelectedTransactions = (ids) => {
+    if (confirm(`Are you sure you want to delete ${ids.length} selected transaction(s)?`)) {
+        state.transactions = state.transactions.filter(t => !ids.includes(t.id));
+        saveState();
+        switchView('settings');
+        alert('Selected transactions have been deleted.');
+    }
 };
 
 const exportToExcel = () => {
@@ -640,10 +772,10 @@ const importFromExcel = (e) => {
                 const rowDesc = String(row.Description);
 
                 // Duplicate Detection
-                const isDuplicate = state.transactions.some(t => 
-                    t.date === rowDate && 
-                    t.time === rowTime && 
-                    t.description === rowDesc && 
+                const isDuplicate = state.transactions.some(t =>
+                    t.date === rowDate &&
+                    t.time === rowTime &&
+                    t.description === rowDesc &&
                     t.amount === rowAmount
                 );
 
@@ -682,10 +814,10 @@ const showModal = (contentHtml) => {
     const container = document.getElementById('modal-container');
     const backdrop = document.getElementById('modal-backdrop');
     const content = document.getElementById('modal-content');
-    
+
     content.innerHTML = contentHtml;
     container.classList.remove('hidden');
-    
+
     setTimeout(() => {
         backdrop.classList.add('opacity-100');
         content.classList.remove('translate-y-full');
@@ -698,10 +830,10 @@ const hideModal = () => {
     const container = document.getElementById('modal-container');
     const backdrop = document.getElementById('modal-backdrop');
     const content = document.getElementById('modal-content');
-    
+
     backdrop.classList.remove('opacity-100');
     content.classList.add('translate-y-full');
-    
+
     setTimeout(() => {
         container.classList.add('hidden');
     }, 300);
@@ -710,7 +842,7 @@ const hideModal = () => {
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     // Apply dark mode from storage
-    if (localStorage.getItem('darkMode') === 'true' || 
+    if (localStorage.getItem('darkMode') === 'true' ||
         (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark');
     }
@@ -722,7 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('nav-stats').onclick = () => switchView('stats');
     document.getElementById('nav-categories').onclick = () => switchView('categories');
     document.getElementById('nav-settings').onclick = () => switchView('settings');
-    
+
     document.getElementById('fab-add').onclick = () => {
         const categoriesOptions = state.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         showModal(`
