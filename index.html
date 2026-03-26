@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cashbook V3</title>
+    <meta name="description" content="A mobile-first personal finance tracker PWA.">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#ec4899',
+                        accent: '#8b5cf6',
+                    },
+                    backdropBlur: {
+                        xs: '2px',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- XLSX -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans min-h-screen flex flex-col">
+    
+    <!-- Navigation (Mobile Bottom Bar) -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 pb-safe-area z-50">
+        <div class="max-w-md mx-auto flex justify-around items-center h-16">
+            <button id="nav-home" class="flex flex-col items-center justify-center w-full h-full text-primary">
+                <i data-lucide="home" class="w-6 h-6"></i>
+                <span class="text-[10px] mt-1">Home</span>
+            </button>
+            <button id="nav-stats" class="flex flex-col items-center justify-center w-full h-full text-slate-400">
+                <i data-lucide="pie-chart" class="w-6 h-6"></i>
+                <span class="text-[10px] mt-1">Stats</span>
+            </button>
+            <div class="relative flex-shrink-0 -mt-6">
+                <button id="fab-add" class="bg-primary text-white rounded-2xl shadow-lg shadow-primary/30 flex items-center justify-center w-20 h-12 transform active:scale-95 transition-transform font-bold">
+                    <i data-lucide="plus-circle" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <button id="nav-categories" class="flex flex-col items-center justify-center w-full h-full text-slate-400">
+                <i data-lucide="tag" class="w-6 h-6"></i>
+                <span class="text-[10px] mt-1">Tags</span>
+            </button>
+            <button id="nav-settings" class="flex flex-col items-center justify-center w-full h-full text-slate-400">
+                <i data-lucide="settings" class="w-6 h-6"></i>
+                <span class="text-[10px] mt-1">Settings</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="app-content" class="flex-1 overflow-y-auto pb-24 px-4 pt-6 max-w-md mx-auto w-full">
+        <!-- Views will be injected here -->
+        <div id="view-loading" class="flex items-center justify-center h-full">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-container" class="fixed inset-0 z-[60] hidden">
+        <div id="modal-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 opacity-0"></div>
+        <div id="modal-content" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl transform translate-y-full transition-transform duration-300 max-w-md mx-auto overflow-hidden">
+            <!-- Modal content injected here -->
+        </div>
+    </div>
+
+    <script src="app.js?v=3"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(registration => {
+                    console.log('SW registered: ', registration);
+                }).catch(registrationError => {
+                    console.log('SW registration failed: ', registrationError);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
