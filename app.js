@@ -132,7 +132,6 @@ const views = {
                 <header class="mb-6 flex justify-between items-center">
                     <div>
                         <h1 class="text-2xl font-bold">Cashbook</h1>
-                        // <p class="text-slate-500 text-sm">Track your daily cash flow</p>
                     </div>
                 </header>
                 
