@@ -45,6 +45,29 @@
     scrollbar-width: none;
 }
 
+/* Custom Thin Scrollbar */
+.thin-scrollbar::-webkit-scrollbar {
+    height: 4px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+    background: rgba(99, 102, 241, 0.05);
+    border-radius: 999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.5);
+    border-radius: 999px;
+    transition: background 0.2s;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 1);
+}
+.dark .thin-scrollbar::-webkit-scrollbar-track {
+    background: rgba(99, 102, 241, 0.1);
+}
+.dark .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.7);
+}
+
 /* Form Styles */
 input, select, textarea {
     width: 100%;
