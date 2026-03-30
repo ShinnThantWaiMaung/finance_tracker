@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cashbook-v4';
+const CACHE_NAME = 'cashbook-v6';
 const ASSETS = [
     './',
     './index.html',
@@ -32,7 +32,7 @@ self.addEventListener('activate', event => {
 // Fetch Event
 self.addEventListener('fetch', event => {
     event.respondWith(
-        caches.match(event.request).then(response => {
+        caches.match(event.request, { ignoreSearch: true }).then(response => {
             // Return from cache or fetch from network
             return response || fetch(event.request).catch(() => {
                 // If offline and request is an HTML page, return a fallback if needed

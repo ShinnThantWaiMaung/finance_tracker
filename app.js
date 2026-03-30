@@ -20,11 +20,21 @@ const AVAILABLE_ICONS = [
     'coffee', 'gift', 'dog', 'clapperboard', 'dumbbell', 'book', 'briefcase', 'plane', 'bus', 'bikini'
 ];
 
+const DEFAULT_ACCOUNTS = [
+    { id: 'personal', name: 'Personal', icon: 'user', color: '#6366f1' },
+    { id: 'work', name: 'Work', icon: 'briefcase', color: '#ec4899' },
+    { id: 'business', name: 'Business', icon: 'building', color: '#8b5cf6' }
+];
 
 // --- State Management ---
 let state = {
     transactions: JSON.parse(localStorage.getItem('transactions')) || [],
     categories: JSON.parse(localStorage.getItem('categories')) || DEFAULT_CATEGORIES,
+    accounts: JSON.parse(localStorage.getItem('accounts')) || DEFAULT_ACCOUNTS,
+    currentAccountId: localStorage.getItem('currentAccountId') || 'personal',
+    budgets: JSON.parse(localStorage.getItem('budgets')) || [],
+    budgetMonthFilter: new Date().toISOString().substring(0, 7),
+    searchQuery: '',
     currentView: 'home',
     filterType: 'all', // all, weekly, monthly, yearly
     filterValue: '',
@@ -35,6 +45,88 @@ let state = {
 const saveState = () => {
     localStorage.setItem('transactions', JSON.stringify(state.transactions));
     localStorage.setItem('categories', JSON.stringify(state.categories));
+    localStorage.setItem('budgets', JSON.stringify(state.budgets));
+    localStorage.setItem('accounts', JSON.stringify(state.accounts));
+    localStorage.setItem('currentAccountId', state.currentAccountId);
+};
+
+const switchAccount = (id) => {
+    state.currentAccountId = id;
+    saveState();
+    switchView('home');
+};
+
+const showAddAccountModal = () => {
+    showModal(`
+        <div class="p-6">
+            <h2 class="text-xl font-bold mb-4">Add New Account</h2>
+            <form id="account-form" class="space-y-4">
+                <input type="text" id="acc-name" placeholder="Account Name (e.g. Travel Card)" required class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 font-semibold text-sm">
+                <input type="color" id="acc-color" value="#6366f1" class="h-12 w-full p-1 rounded-xl cursor-pointer">
+                <button type="submit" class="btn-primary w-full mt-4 !py-4">Create Account</button>
+            </form>
+        </div>
+    `);
+    document.getElementById('account-form').onsubmit = (e) => {
+        e.preventDefault();
+        const name = document.getElementById('acc-name').value;
+        const color = document.getElementById('acc-color').value;
+        const id = name.toLowerCase().replace(/\s/g, '-');
+        state.accounts.push({ id, name, color, icon: 'credit-card' });
+        state.currentAccountId = id;
+        saveState();
+        hideModal();
+        switchView('home');
+    };
+};
+
+const setBudget = (catId) => {
+    const month = state.budgetMonthFilter;
+    const existing = state.budgets.find(b => b.categoryId === catId && b.monthId === month);
+    const cat = state.categories.find(c => c.id === catId);
+    
+    showModal(`
+        <div class="p-6">
+            <h2 class="text-xl font-bold mb-4">Set Monthly Budget</h2>
+            <p class="text-xs text-slate-400 mb-4 font-bold uppercase">Topic: ${cat.name} (${month})</p>
+            <form id="budget-form" class="space-y-4">
+                <input type="number" id="budget-amt" value="${existing ? existing.amount : ''}" placeholder="0.00" step="0.01" required>
+                <button type="submit" class="btn-primary w-full mt-4">Save Budget Goal</button>
+            </form>
+        </div>
+    `);
+    
+    document.getElementById('budget-form').onsubmit = (e) => {
+        e.preventDefault();
+        const amt = parseFloat(document.getElementById('budget-amt').value);
+        const idx = state.budgets.findIndex(b => b.categoryId === catId && b.monthId === month);
+        if (idx > -1) state.budgets[idx].amount = amt;
+        else state.budgets.push({ categoryId: catId, monthId: month, amount: amt });
+        saveState();
+        hideModal();
+        switchView('categories');
+    };
+};
+
+const toggleSearch = () => {
+    state.isSearchOpen = !state.isSearchOpen;
+    if (!state.isSearchOpen) {
+        state.searchQuery = '';
+    }
+    switchView('home');
+};
+
+const handleSearch = (e) => {
+    state.searchQuery = e.target.value;
+    switchView('home');
+    const input = document.getElementById('search-input');
+    if (input) {
+        input.focus();
+        // Move cursor to end
+        const val = input.value;
+        input.value = '';
+        input.value = val;
+    }
 };
 
 // --- Utils ---
@@ -112,6 +204,19 @@ const views = {
     home: () => {
         let transactions = [...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+        // Account Filter
+        transactions = transactions.filter(t => (t.accountId || 'personal') === state.currentAccountId);
+
+        // Search Filter
+        if (state.searchQuery) {
+            const query = state.searchQuery.toLowerCase();
+            transactions = transactions.filter(t => 
+                t.description.toLowerCase().includes(query) || 
+                t.categoryName.toLowerCase().includes(query) ||
+                Math.abs(t.amount).toString().includes(query)
+            );
+        }
+
         // Apply Filters
         if (state.filterType !== 'all') {
             if (state.filterType === 'weekly') {
@@ -135,9 +240,28 @@ const views = {
 
         let html = `
             <div class="animate-fade-in-up">
-                <header class="mb-6 flex justify-between items-center">
-                    <div>
-                        <h1 class="text-2xl font-bold">Cashbook</h1>
+                <header class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex-1 overflow-x-auto hide-scrollbar mr-4">
+                            <div class="flex gap-2 w-max">
+                                ${state.accounts.map(acc => `
+                                    <button onclick="switchAccount('${acc.id}')" class="px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${state.currentAccountId === acc.id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-100 dark:border-slate-800'}">
+                                        <i data-lucide="${acc.icon}" class="w-4 h-4"></i>
+                                        ${acc.name}
+                                    </button>
+                                `).join('')}
+                                <button onclick="showAddAccountModal()" class="px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-2 bg-white dark:bg-slate-900 text-slate-400 border border-dashed border-slate-300 dark:border-slate-700">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button onclick="toggleSearch()" class="min-w-10 w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="search-container" class="transition-all overflow-hidden ${state.searchQuery || state.isSearchOpen ? 'max-h-20 opacity-100 mb-4' : 'max-h-0 opacity-0 m-0'}">
+                        <input type="text" id="search-input" placeholder="Search transactions (name, category, amount)..." value="${state.searchQuery}" onkeyup="handleSearch(event)" class="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 font-semibold text-sm outline-none focus:border-primary">
                     </div>
                 </header>
                 
@@ -198,7 +322,7 @@ const views = {
                                                 </div>
                                                 <div class="flex-1">
                                                     <p class="font-semibold text-sm">${t.description}</p>
-                                                    <p class="text-slate-400 text-[10px]">${t.categoryName}</p>
+                                                    <p class="text-slate-400 text-[10px]">${t.categoryName} • ${t.time ? t.time : 'N/A'}</p>
                                                 </div>
                                             </div>
                                             <p class="font-bold text-sm ${t.amount < 0 ? 'text-red-500' : 'text-green-500'}">
@@ -216,24 +340,28 @@ const views = {
         return html;
     },
     stats: () => {
+        let transactions = [...state.transactions];
+        
+        // Account Filter
+        transactions = transactions.filter(t => (t.accountId || 'personal') === state.currentAccountId);
+
         // Apply Filters
-        let filteredTxns = [...state.transactions];
         if (state.statsFilterType !== 'all') {
             if (state.statsFilterType === 'weekly') {
-                filteredTxns = filteredTxns.filter(t => getWeekId(t.date) === state.statsFilterValue);
+                transactions = transactions.filter(t => getWeekId(t.date) === state.statsFilterValue);
             } else if (state.statsFilterType === 'monthly') {
-                filteredTxns = filteredTxns.filter(t => getMonthId(t.date) === state.statsFilterValue);
+                transactions = transactions.filter(t => getMonthId(t.date) === state.statsFilterValue);
             } else if (state.statsFilterType === 'yearly') {
-                filteredTxns = filteredTxns.filter(t => getYearId(t.date) === state.statsFilterValue);
+                transactions = transactions.filter(t => getYearId(t.date) === state.statsFilterValue);
             }
         }
 
         const expensesByCategory = {};
-        filteredTxns.filter(t => t.amount < 0).forEach(t => {
+        transactions.filter(t => t.amount < 0).forEach(t => {
             expensesByCategory[t.categoryName] = (expensesByCategory[t.categoryName] || 0) + Math.abs(t.amount);
         });
 
-        const totalIncome = filteredTxns.filter(t => t.amount > 0).reduce((a, t) => a + t.amount, 0);
+        const totalIncome = transactions.filter(t => t.amount > 0).reduce((a, t) => a + t.amount, 0);
         const totalExpense = Object.values(expensesByCategory).reduce((acc, val) => acc + val, 0);
         const sortedCategories = Object.entries(expensesByCategory).sort((a, b) => b[1] - a[1]);
         const filterLabel = { all: 'All Time', weekly: 'This Week', monthly: 'This Month', yearly: 'This Year' };
@@ -265,6 +393,13 @@ const views = {
                     <div class="card flex flex-col justify-between">
                         <p class="text-slate-400 text-[10px] font-medium uppercase mb-1">Expenses</p>
                         <p class="text-red-500 font-bold text-lg">${formatCurrency(totalExpense)}</p>
+                    </div>
+                </div>
+
+                <div class="card mb-6">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-4 text-center">7-Day Spending Trend</p>
+                    <div class="relative h-40">
+                        <canvas id="trendChart"></canvas>
                     </div>
                 </div>
 
@@ -308,29 +443,69 @@ const views = {
             </div>
         `;
     },
-    categories: () => `
+    categories: () => {
+        const monthFilter = state.budgetMonthFilter;
+        // Calculate expenses for the selected month and account
+        const monthTransactions = state.transactions.filter(t => 
+            t.amount < 0 && 
+            t.date.startsWith(monthFilter) && 
+            (t.accountId || 'personal') === state.currentAccountId
+        );
+        const expensesByCategory = monthTransactions.reduce((acc, t) => {
+            acc[t.categoryId] = (acc[t.categoryId] || 0) + Math.abs(t.amount);
+            return acc;
+        }, {});
+
+        return `
         <div class="animate-fade-in-up">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold">Categories</h1>
+                <h1 class="text-2xl font-bold">Budgets & Tags</h1>
                 <button id="add-category-btn" class="text-primary font-bold text-sm">+ Add New</button>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                ${state.categories.map(c => `
-                    <div class="card relative group">
-                        <button onclick="deleteCategory('${c.id}')" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+            
+            <div class="mb-6">
+                <input type="month" id="budget-month-picker" value="${monthFilter}" class="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-sm font-bold text-slate-600 dark:text-slate-300">
+            </div>
+
+            <div class="space-y-4">
+                ${state.categories.map(c => {
+                    const budget = state.budgets.find(b => b.categoryId === c.id && b.monthId === monthFilter) || { amount: 0 };
+                    const spent = expensesByCategory[c.id] || 0;
+                    const percent = budget.amount > 0 ? Math.min((spent / budget.amount) * 100, 100) : 0;
+                    const statusColor = percent > 90 ? 'bg-red-500' : percent > 70 ? 'bg-amber-500' : 'bg-green-500';
+
+                    return `
+                    <div class="card relative group p-4">
+                        <button onclick="deleteCategory('${c.id}')" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
-                        <div class="flex flex-col items-center">
-                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style="background-color: ${c.color}20; color: ${c.color}">
-                                <i data-lucide="${c.icon}" class="w-6 h-6"></i>
+                        
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center flex-1">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center mr-3" style="background-color: ${c.color}20; color: ${c.color}">
+                                    <i data-lucide="${c.icon}" class="w-5 h-5"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-bold text-sm">${c.name}</p>
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase">
+                                        Spent ${formatCurrency(spent)} ${budget.amount > 0 ? `of ${formatCurrency(budget.amount)}` : '(No Budget set)'}
+                                    </p>
+                                </div>
                             </div>
-                            <span class="font-medium text-sm">${c.name}</span>
+                            <button onclick="setBudget('${c.id}')" class="text-primary font-bold text-[10px] border border-primary/20 bg-primary/5 px-2 py-1 rounded-lg">Set Limit</button>
                         </div>
+                        
+                        ${budget.amount > 0 ? `
+                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-3">
+                            <div class="h-full rounded-full ${statusColor} transition-all duration-500" style="width: ${percent}%"></div>
+                        </div>
+                        ` : ''}
                     </div>
-                `).join('')}
+                `}).join('')}
             </div>
         </div>
-    `,
+        `;
+    },
     settings: () => `
         <div class="animate-fade-in-up">
             <h1 class="text-2xl font-bold mb-6">Settings</h1>
@@ -539,6 +714,13 @@ const switchView = (viewName) => {
     }
     if (viewName === 'categories') {
         document.getElementById('add-category-btn').onclick = showAddCategoryModal;
+        const monthPicker = document.getElementById('budget-month-picker');
+        if (monthPicker) {
+            monthPicker.onchange = (e) => {
+                state.budgetMonthFilter = e.target.value;
+                switchView('categories');
+            };
+        }
     }
 };
 
@@ -928,14 +1110,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const catId = document.getElementById('t-category').value;
             const date = document.getElementById('t-date').value;
             const time = document.getElementById('t-time').value;
-            const category = state.categories.find(c => c.id === catId);
+            const category = state.categories.find(c => String(c.id) === String(catId));
 
             state.transactions.push({
                 id: Date.now().toString(),
+                accountId: state.currentAccountId,
                 description: desc,
                 amount: type === 'expense' ? -Math.abs(amount) : Math.abs(amount),
                 categoryId: catId,
-                categoryName: category.name,
+                categoryName: category ? category.name : 'Uncategorized',
                 date: date,
                 time: time
             });
@@ -955,6 +1138,8 @@ const initChart = (filterType = 'all', filterValue = '') => {
     if (!ctx) return;
 
     let txns = [...state.transactions];
+    txns = txns.filter(t => (t.accountId || 'personal') === state.currentAccountId);
+
     if (filterType !== 'all') {
         if (filterType === 'weekly') {
             txns = txns.filter(t => getWeekId(t.date) === filterValue);
@@ -1000,4 +1185,49 @@ const initChart = (filterType = 'all', filterValue = '') => {
             }
         }
     });
+
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+        const last7Days = [...Array(7)].map((_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            return d.toISOString().split('T')[0];
+        });
+
+        const spendingData = last7Days.map(date => {
+            return Math.abs(state.transactions
+                .filter(t => t.date === date && t.amount < 0)
+                .reduce((acc, t) => acc + t.amount, 0)
+            );
+        });
+
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: last7Days.map(d => {
+                    const parts = d.split('-');
+                    return `${parts[1]}/${parts[2]}`;
+                }),
+                datasets: [{
+                    label: 'Spending',
+                    data: spendingData,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#6366f1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, display: false },
+                    x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+    }
 };
